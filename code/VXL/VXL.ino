@@ -50,7 +50,6 @@ lcd.createChar(0, degree);
 lcd.setCursor(0,0);
 lcd.print("  DHT11   with ");
 lcd.setCursor(0,1);
-lcd.print("  ESP32 DevKit ");
 delay(3000);
 lcd.clear();
 // cho dht11 hoat dong:
