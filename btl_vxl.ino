@@ -1,15 +1,16 @@
 #include <DHT.h>
-#include <BlynkSimpleStream.h>
-#include <Wire.h> 
 #include <LiquidCrystal.h>
-//#define BLYNK_PRINT SwSerial
+#include <Wire.h>
+#include "Timer.h"
+#include <BlynkSimpleStream.h>
 LiquidCrystal lcd (12,11,5,4,3,2);
-int motor = 13; ;//khai báo chân 13 của arduino là chân motor
+int motor = 13; //khai báo chân 13 của arduino là chân motor
+Timer timer; //khai báo timer
+const int DHTPIN = 8; //khai báo chân 8 là chân cảm biến
+const int DHTTYPE = DHT11; //khai báo loại cảm biến là DHT11
 unsigned long prevTime = 0; //biến lưu trữ trước khi cập nhật
-const int DHTPIN = 8;
-const int DHTTYPE = DHT11;
-char auth[] = "9JPF8RjS9UcqFr7QSt8bFr4P9H2Nz1a5";
-
+char auth[] = "9JPF8RjS9UcqFr7QSt8bFr4P9H2Nz1a5"; //mã kết nối với server blynk qua cổng USB
+DHT dht(DHTPIN, DHTTYPE); //khai báo thư viện chân cảm biến và kiểu cảm biến
 DHT dht(DHTPIN, DHTTYPE); //khai báo thư viện chân cảm biến và kiểu cảm biến
 byte degree[8]={
    0B01110,
@@ -20,45 +21,48 @@ byte degree[8]={
    0B00000,
    0B00000
 };
-void setup() { 
-  Serial.begin(9600); 
-  dht.begin();
-  pinMode(motor,OUTPUT); //chân motor là output
-  Blynk.begin(Serial, auth); /khởi tạo blynk
+
+void writetoBlynk() {
+   Blynk.run(); 
+   Blynk.virtualWrite(V5, h); //chọn độ ẩm trên blynk gắn vào chân V5 chế độ virtual 
+   Blynk.virtualWrite(V6, t); //chọn nhiệt độ trên blynk gắn vào chân V6 chế độ     virtual
+}
+void setup() {
+Serial.begin(9600);
+dht.begin();
+pinMode(motor,OUTPUT); //chân motor là output
+Blynk.begin(Serial, auth); //khởi tạo blynk
+blynkTimer.setInterval(5000, writetoBlynk); //cứ 5s thì dữ liệu sẽ gửi đến blynk một lần
 }
 
 void loop() {
-    Blynk.run();
-   // timer.run();
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
-    Blynk.virtualWrite(V5, h); //chọn độ ẩm trên blynk gắn vào chân V5 chế độ virtual 
-    Blynk.virtualWrite(V6, t); //chọn nhiệt độ trên blynk gắn vào chân V6 chế độ virtual
-    unsigned long currTime = millis(); // biến lưu trữ thời gian hiện tại
-    //Ngắt
-    if(currTime - prevTime >= 1000){   //nếu biến hiện tại trừ biến trước khi cập nhật mà lớn hơn 1s
-    prevTime = currTime;               //thì dữ liệu sẽ được cập nhật lại
-     if (isnan(t)||isnan(h)){
-      Serial.println("False to read from DHT11");
-     }
-     else{
-       lcd.begin(16,2);
-       lcd.print("nhiet do: ");
-       lcd.print(t);
-       lcd.setCursor(0,1);
-       lcd.print("do am: ");
-       lcd.print(h);
-       lcd.setCursor(1,1);
-         }
-         //khi nhiệt độ lớn hơn 30 độ C và độ ẩm nhỏ hơn 75% thì máy bơm hoạt động
-        if(t >= 30 && h <= 75 )
-          {
-           digitalWrite(motor,LOW);
-          } 
-         else
-          {
-           digitalWrite(motor,HIGH);
-          }   
-       }
-     
+blynkTimer.run();
+timer.update();
+float h = dht.readHumidity();
+float t = dht.readTemperature();
+unsigned long currTime = millis();  // biến lưu trữ thời gian hiện tại
+if(currTime - prevTime >= 1000){   //nếu biến hiện tại trừ biến trước khi cập nhật               mà lớn hơn 1s
+prevTime = currTime;                      //thì dữ liệu sẽ được cập nhật lại
+//hiện thị nhiệt độ, độ ẩm lên lcd
+if (isnan(t)||isnan(h)){
+Serial.println("False to read from DHT11");
+}
+else { 
+    lcd.begin(16,2);
+    lcd.print("nhiet do: ");
+    lcd.print(t);
+    lcd.setCursor(0,1);
+    lcd.print("do am: ");
+    lcd.print(h);
+    lcd.setCursor (1,1);
+    }
+}
+//khi nhiệt độ lớn hơn 30 độ C và độ ẩm nhỏ hơn 75% thì máy bơm hoạt động
+    if(t >= enbTemp && h <= enbHumi )  {
+      digitalWrite (motor, HIGH);
+      } 
+      else
+      {
+        digitalWrite (motor, LOW);
+      }   
 }
